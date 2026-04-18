@@ -3,7 +3,7 @@
 > 面向生产的、下一代 Knowledge Graph RAG Demo。融合 **GraphRAG · LightRAG · HippoRAG 2 · Agentic RAG · ColBERT 晚期交互 · MCP 协议** 等 2025 年代最新范式，以**可扩展性**为第一原则。
 
 ```
-作者：付宇江 (Russell) · Agentic Fullstack Engineer
+作者：付宇江 · Agentic Fullstack Engineer
 日期：2026-04-18
 ```
 
