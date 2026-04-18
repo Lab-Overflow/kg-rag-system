@@ -196,4 +196,4 @@ curl -X POST localhost:8000/api/query \
 
 ## 10 · License
 
-MIT · 仅供学习与内部研究使用。
+Apache License 2.0 · 见 [`LICENSE`](LICENSE)。
