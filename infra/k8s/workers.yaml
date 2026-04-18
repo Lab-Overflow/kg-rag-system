@@ -1,0 +1,35 @@
+# Ray-based ingestion worker — KEDA-scaled by Kafka queue depth
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ingest-worker, namespace: kg-rag }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: ingest-worker } }
+  template:
+    metadata: { labels: { app: ingest-worker } }
+    spec:
+      containers:
+      - name: worker
+        image: ghcr.io/your-org/kg-rag-backend:0.1.0
+        command: ["python", "-m", "scripts.kafka_worker"]
+        envFrom:
+        - secretRef: { name: kg-rag-secrets }
+        - configMapRef: { name: kg-rag-config }
+        resources:
+          requests: { cpu: "1", memory: "2Gi" }
+          limits: { cpu: "4", memory: "8Gi" }
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: ingest-worker-scaler, namespace: kg-rag }
+spec:
+  scaleTargetRef: { name: ingest-worker }
+  minReplicaCount: 2
+  maxReplicaCount: 50
+  triggers:
+  - type: kafka
+    metadata:
+      bootstrapServers: kafka:9092
+      topic: kgrag.ingest
+      consumerGroup: ingest-worker
+      lagThreshold: "100"

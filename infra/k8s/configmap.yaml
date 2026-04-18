@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: kg-rag-config, namespace: kg-rag }
+data:
+  APP_ENV: "prod"
+  NEO4J_URI: "bolt://neo4j:7687"
+  QDRANT_URL: "http://qdrant:6333"
+  OPENSEARCH_URL: "http://opensearch:9200"
+  REDIS_URL: "redis://redis:6379/0"
+  KAFKA_BOOTSTRAP: "kafka:9092"
+  DEFAULT_MODE: "agentic"
+  MAX_AGENT_ROUNDS: "3"
+  DEFAULT_TOP_K: "20"
+  RERANK_TOP_K: "8"
+  LLM_PLANNER: "claude-opus-4-7"
+  LLM_EXTRACTOR: "claude-haiku-4-5-20251001"
+  LLM_SYNTHESIZER: "claude-opus-4-7"
+  EMBEDDING_MODEL: "BAAI/bge-m3"
+---
+# 真实部署时用 ExternalSecrets/Vault 注入；示例略
+apiVersion: v1
+kind: Secret
+metadata: { name: kg-rag-secrets, namespace: kg-rag }
+type: Opaque
+stringData:
+  NEO4J_USER: "neo4j"
+  NEO4J_PASSWORD: "replace-me"
+  NEO4J_AUTH: "neo4j/replace-me"
+  ANTHROPIC_API_KEY: ""
+  OPENAI_API_KEY: ""
+  COHERE_API_KEY: ""
+  APP_SECRET: "replace-me"

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: qdrant, namespace: kg-rag }
+spec:
+  serviceName: qdrant
+  replicas: 3           # shards + replicas
+  selector: { matchLabels: { app: qdrant } }
+  template:
+    metadata: { labels: { app: qdrant } }
+    spec:
+      containers:
+      - name: qdrant
+        image: qdrant/qdrant:v1.11.0
+        ports: [{ containerPort: 6333 }, { containerPort: 6334 }]
+        env:
+        - { name: QDRANT__CLUSTER__ENABLED, value: "true" }
+        volumeMounts: [{ name: data, mountPath: /qdrant/storage }]
+        resources:
+          requests: { cpu: "1", memory: "4Gi" }
+          limits: { cpu: "4", memory: "16Gi" }
+  volumeClaimTemplates:
+  - metadata: { name: data }
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources: { requests: { storage: 100Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: qdrant, namespace: kg-rag }
+spec:
+  clusterIP: None
+  selector: { app: qdrant }
+  ports: [{ port: 6333 }, { port: 6334 }]

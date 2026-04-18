@@ -1,0 +1,117 @@
+version: "3.9"
+
+# 一键起全栈。开发用。生产请切 K8s（见 infra/k8s）。
+services:
+
+  neo4j:
+    image: neo4j:5.20-enterprise
+    environment:
+      - NEO4J_AUTH=neo4j/kgrag_pw
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4J_PLUGINS=["graph-data-science","apoc"]
+      - NEO4J_dbms_memory_heap_initial__size=2G
+      - NEO4J_dbms_memory_heap_max__size=4G
+    ports: ["7474:7474", "7687:7687"]
+    volumes: ["neo4j_data:/data", "neo4j_logs:/logs"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.11.0
+    ports: ["6333:6333", "6334:6334"]
+    volumes: ["qdrant_data:/qdrant/storage"]
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=KgRag!2026
+      - "OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g"
+    ports: ["9200:9200"]
+    volumes: ["os_data:/usr/share/opensearch/data"]
+
+  redis:
+    image: redis:7.2-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redis_data:/data"]
+
+  kafka:
+    image: bitnami/kafka:3.7
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    ports: ["9092:9092"]
+
+  ray-head:
+    image: rayproject/ray:2.34.0-py311
+    command: >
+      bash -c "ray start --head --port=6380 --dashboard-host=0.0.0.0
+      --num-cpus=4 --block"
+    ports: ["8265:8265", "6380:6380"]
+    shm_size: "2gb"
+
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    ports: ["6006:6006"]  # UI
+    environment:
+      - PHOENIX_PORT=6006
+
+  langfuse:
+    image: langfuse/langfuse:2
+    ports: ["3030:3000"]
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=kgrag-dev-secret
+      - SALT=kgrag-salt
+      - NEXTAUTH_URL=http://localhost:3030
+    depends_on: [langfuse-db]
+
+  langfuse-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes: ["langfuse_pg:/var/lib/postgresql/data"]
+
+  backend:
+    build: ./backend
+    env_file: .env
+    ports: ["8000:8000"]
+    depends_on:
+      neo4j: { condition: service_healthy }
+      qdrant: { condition: service_started }
+      redis: { condition: service_started }
+    volumes:
+      - ./backend:/app
+      - ./configs:/app/configs:ro
+      - ./data:/app/data:ro
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    volumes: ["./frontend:/app", "/app/node_modules"]
+    command: npm run dev -- --host 0.0.0.0
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  qdrant_data:
+  os_data:
+  redis_data:
+  langfuse_pg:

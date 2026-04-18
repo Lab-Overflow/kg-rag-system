@@ -1,0 +1,26 @@
+# 领域本体（Ontology）。可按业务改写（金融 / 法律 / 医疗…）
+# 用于 LLM 抽取时作为 JSON-schema 约束
+entity_types:
+  - Person
+  - Organization
+  - Product
+  - Location
+  - Event
+  - Concept
+  - Metric
+  - Date
+  - Document
+
+relation_types:
+  - works_at
+  - founded
+  - located_in
+  - part_of
+  - produced_by
+  - competes_with
+  - subsidiary_of
+  - happened_at
+  - influences
+  - related_to
+  - published_by
+  - cites

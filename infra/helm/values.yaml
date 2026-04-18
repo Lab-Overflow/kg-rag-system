@@ -1,0 +1,21 @@
+image:
+  repository: ghcr.io/your-org/kg-rag-backend
+  tag: "0.1.0"
+replicaCount: 3
+resources:
+  requests: { cpu: "500m", memory: "1Gi" }
+  limits:   { cpu: "2",    memory: "4Gi" }
+autoscaling:
+  enabled: true
+  min: 3
+  max: 20
+  cpuTarget: 70
+neo4j:
+  enabled: true
+  size: 200Gi
+qdrant:
+  enabled: true
+  replicas: 3
+ingress:
+  enabled: true
+  host: kg-rag.example.com
