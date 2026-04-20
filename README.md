@@ -197,3 +197,171 @@ curl -X POST localhost:8000/api/query \
 ## 10 · License
 
 Apache License 2.0 · 见 [`LICENSE`](LICENSE)。
+
+---
+
+## 11 · 附录（协作者阅读）: 设计说明与可行性判断
+
+本节是额外说明，用于帮助协作者快速判断这个 Demo 的设计逻辑、边界与可落地性。
+
+### 11.1 这个项目和普通文本 RAG 的核心差异
+
+| 维度 | 纯文本 RAG | 本项目（KG-RAG） |
+|---|---|---|
+| 索引单元 | 仅 chunk | chunk + entity + relation + community |
+| 检索路径 | 通常 1 条（向量/关键词） | 多路并行（hybrid + graph + hippo + agentic） |
+| 推理方式 | 基于相似片段拼接 | 支持路径级多跳推理与社区级摘要推理 |
+| 可解释性 | 主要靠 chunk 引用 | chunk 引用 + 图关系路径 |
+| 评估维度 | 答案质量 | 答案质量 + 图谱质量 + 多跳准确率 |
+
+### 11.2 为什么说这个方案“可行”
+
+| 可行性来源 | 当前状态 | 说明 |
+|---|---|---|
+| 端到端链路 | 已具备 | 已有 ingest -> 抽取 -> 入库 -> 检索 -> 回答 的完整流程 |
+| 多模式检索 | 已具备 | `hybrid / local_graph / global_graph / hippo / agentic` 可路由 |
+| 工程化骨架 | 已具备 | 包含 FastAPI、前端、Docker Compose、K8s/Helm/Terraform 目录 |
+| 可扩展接口 | 已具备 | 预留 MCP、Kafka、Ray、评估与观测链路 |
+| 演示可读性 | 已具备 | README、ARCHITECTURE、ROADMAP、EVAL 文档齐全 |
+
+### 11.3 当前成熟度边界（协作时务必注意）
+
+| 模块 | 成熟度 | 备注 |
+|---|---|---|
+| 核心流程（Demo） | 可运行骨架 | 适合概念验证、方案讲解、二次开发起点 |
+| `colpali` 模式 | 占位 | 当前返回 placeholder，未完成多模态检索闭环 |
+| `reindex_tenant` | 占位 | 已留接口，尚未实现生产级回填流程 |
+| 鉴权 | Demo 级 | 当前是简化租户/JWT 占位，生产需接 OIDC/RBAC |
+| 测试与 CI | 待补强 | 测试可编译但默认路径配置未完全打通 |
+
+### 11.4 协作者推荐协作方式
+
+1. 第一阶段先把它当“可扩展骨架”，重点验证检索质量与多跳效果，不先追求全功能上线。
+2. 第二阶段优先补齐占位项（`colpali`、`reindex`、auth），再推进性能与成本优化。
+3. 第三阶段按业务域补 ontology 与评估集，形成可复现实验基线（simple/medium/strong/boss）。
+
+### 11.5 结论
+
+这个方案在 2026-04-18 的状态下，结论是“方向正确、骨架可用、功能分层明确”，适合作为协作研发底座。  
+如果目标是生产落地，需要在安全、测试、占位模块与观测闭环上继续工程化推进。
+
+---
+
+## 12 · KG Demo 数据集（可直接调用）
+
+本项目已内置一套可直接用于课程 notebook 调用的 KG-RAG 数据集与自动验证脚本，路径为 `data/rag_kg_hongloumeng_v1/`。
+
+### 12.1 数据集产物
+
+| 文件 | 用途 |
+|---|---|
+| `test_public.jsonl` | 公开测试集（单跳为主） |
+| `test_private.jsonl` | 私有测试集（多跳/比较/聚合） |
+| `chunks.jsonl` | 文本检索 chunk 资产 |
+| `triples.jsonl` | 知识图谱三元组（含证据 chunk id） |
+| `entity_alias.json` | 实体别名映射 |
+| `manifest.json` | 数据集元信息与计数 |
+| `hongloumeng_fulltext.txt` | 纯文本流程回退文件 |
+| `rag_kg_hongloumeng_v1.zip` | 便于上传网站子目录的打包文件 |
+
+### 12.2 从 0 到 1 生成数据集
+
+```bash
+python scripts/build_kg_rag_dataset.py --out-dir data/rag_kg_hongloumeng_v1
+```
+
+### 12.3 自动校验与 Smoke Test
+
+```bash
+# 1) 结构/一致性/检索烟测
+python scripts/validate_kg_rag_dataset.py --base-dir data/rag_kg_hongloumeng_v1
+
+# 2) 直接调用 + baseline 前后差异报告
+python scripts/smoke_call_and_baseline_diff.py \
+  --dataset-dir data/rag_kg_hongloumeng_v1 \
+  --report data/rag_kg_hongloumeng_v1/baseline_demo_report.md
+```
+
+### 12.4 如何体现 RAG 使用前后差异
+
+自动脚本会生成两个文件：
+
+1. `data/rag_kg_hongloumeng_v1/baseline_demo_summary.json`  
+2. `data/rag_kg_hongloumeng_v1/baseline_demo_report.md`
+
+其中报告包含课程风格的两部分：
+
+1. `Simple / Medium / Strong / Boss` 基线对比表。  
+2. `Input & Output examples`，展示 no-RAG 与 text-RAG / KG-RAG 的输出差异。
+
+### 12.5 网站子目录部署建议
+
+将 `rag_kg_hongloumeng_v1.zip` 解压上传到你的网站子目录后，确保以下 URL 可访问：
+
+1. `<base_url>/test_public.jsonl`  
+2. `<base_url>/test_private.jsonl`  
+3. `<base_url>/chunks.jsonl`  
+4. `<base_url>/triples.jsonl`  
+5. `<base_url>/entity_alias.json`
+
+---
+
+## 13 · 检索策略与召回率（术语归纳）
+
+本节用于协作者快速统一 baseline、retrieval strategy 与评估口径。
+
+### 13.1 课程 baseline 与“检索策略”的关系
+
+| Baseline | 输入形式 | 本质 |
+|---|---|---|
+| `simple` | `sys prompt + user query` | 无检索基线（只依赖模型参数知识） |
+| `medium` | `sys prompt + user query + chunks(BM25)` | 稀疏检索策略（关键词/BM25） |
+| `strong` | `sys prompt + user query + chunks(embedding)` | 稠密检索策略（向量相似度） |
+| `boss` | 与 `medium/strong` 一致，但提高 chunk 数量 | 检索参数升级（如更大的 `top-k`），不一定是新算法 |
+
+结论：这些 baseline 不只是 prompt 差异，更是“检索路径 + 参数配置”的差异。
+
+### 13.2 切分策略：规则生成 vs 切分器
+
+| 策略 | 类型 | 说明 |
+|---|---|---|
+| 固定 token + overlap | 切分器 | 典型参数化切分（`chunk_size/chunk_overlap`） |
+| 递归切分（章/节/段/句） | 切分器 | 超长文本逐层降级切分 |
+| 结构化切分（标题/表格/FAQ） | 规则为主 + 切分器 | 先按文档结构规则分段，再切块 |
+| 语义切分 | 切分器（模型驱动） | 基于句向量相似度变化点断开 |
+| 多粒度索引 | 策略层 | 组合多个切分结果（small/parent）联合召回 |
+| 实体中心切分 | 规则/KG 为主 | 围绕实体与关系聚合证据块 |
+| 查询时动态切分 | 策略层 | 检索时按 query 触发二次局部切分 |
+| 时间/版本切分 | 规则分片 | 按生效时间、版本号管理知识片段 |
+
+补充：当前 `scripts/build_kg_rag_dataset.py` 采用的是“每条 Fact 生成一条 chunk”的构造方式，不是通用自动切分器。
+
+### 13.3 召回率（Recall）定义与调参意义
+
+常用定义：`Recall@k = top-k 中命中的相关证据数 / 全部相关证据数`。
+
+在 RAG 中，召回率会直接影响检索策略改动：
+
+1. 召回低：优先优化检索（hybrid、query rewrite、实体别名扩展、`top-k`）。
+2. 召回高但答案差：通常问题在 rerank、上下文组装或生成阶段。
+3. 盲目增大 `top-k` 会引入噪声：需配合重排与上下文裁剪。
+
+### 13.4 术语速查（非参数名词）
+
+| 术语 | 解释 |
+|---|---|
+| `hybrid` | 混合检索，组合稀疏检索（BM25）与稠密检索（embedding） |
+| `query rewrite` | 查询改写，把用户问题转为更利于检索的表达 |
+| `entity expansion` | 实体扩展，基于别名/同义映射扩展检索种子 |
+| `rerank` | 对初步召回结果再次打分重排，提升前排证据质量 |
+| `KG` | 知识图谱（Graph），是实体-关系图结构，不是图片数据 |
+| `top-k` | 检索阶段输入参数，表示最多保留前 k 条候选 |
+
+### 13.5 为什么升级到“多粒度 + KG 实体中心”
+
+相对“1 fact -> 1 chunk”的简单构造，主要提升点：
+
+1. 召回更稳：小块提命中率，大块补上下文完整性。
+2. 多跳更强：可由实体命中后沿关系边扩展证据链。
+3. 可解释性更强：可给出实体/三元组/证据块的链路依据。
+4. 可扩展性更好：便于后续叠加 rerank、时效过滤与权限策略。

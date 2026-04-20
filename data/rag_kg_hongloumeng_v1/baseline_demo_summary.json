@@ -1,0 +1,25 @@
+{
+  "base_url": "http://127.0.0.1:58071",
+  "smoke_all_pass": true,
+  "metrics": {
+    "public": {
+      "simple": 0.0,
+      "medium": 1.0,
+      "strong": 1.0,
+      "boss": 1.0
+    },
+    "private": {
+      "simple": 0.0,
+      "medium": 0.8,
+      "strong": 1.0,
+      "boss": 1.0
+    },
+    "all": {
+      "simple": 0.0,
+      "medium": 0.9411764705882353,
+      "strong": 1.0,
+      "boss": 1.0
+    }
+  },
+  "report": "data/rag_kg_hongloumeng_v1/baseline_demo_report.md"
+}
