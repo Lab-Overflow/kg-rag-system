@@ -48,7 +48,7 @@
         ▼            ▼              ▼              ▼
    ┌──────────────────────────────────────────────────────┐
    │              Storage & Infra Layer                   │
-   │  Neo4j(+GDS) │ Qdrant │ OpenSearch │ Redis │ Kafka   │
+   │  Neo4j(+GDS) │ Qdrant(Vector Database) │ OpenSearch │ Redis │ Kafka   │
    └──────────────────────────────────────────────────────┘
                              │
                 ┌────────────┴────────────┐
@@ -144,6 +144,25 @@ curl -X POST localhost:8000/api/query \
 | `agentic` | 多跳/比较/推理 | LangGraph：Plan → 多轮检索 → Critique → 合成 |
 | `hippo` | 关联记忆型 | 实体种子 + Personalized PageRank |
 | `colpali` | 含图表/PDF | ColPali 多模态 late-interaction |
+
+---
+
+## 5.1 · 向量数据库（Qdrant）的价值与应用场景
+
+Qdrant 在本系统中承担 `Vector Database` 角色，负责存储与检索 chunk 的 dense/sparse 向量，并与图检索结果融合。
+
+### 核心优势
+
+- **语义召回能力强**：支持基于 embedding 的相似检索，能覆盖关键词不完全重合但语义相关的问题。
+- **混合检索友好**：支持 dense + sparse（SPLADE）联合检索，适合中文问答里的“语义 + 关键词”混合场景。
+- **工程可扩展**：支持分片、副本与量化，便于在数据规模增大后保持吞吐和成本平衡。
+- **多租户过滤清晰**：可基于 payload（如 tenant/doc_id）做精确过滤，便于 SaaS 化隔离。
+
+### 本项目中的典型场景
+
+- **`hybrid` 模式主召回**：先做 dense+sparse 召回，再经 rerank 得到高质量证据块。
+- **`local_graph` 模式补充文本证据**：图谱拿到子图后，仍通过向量检索补齐自然语言上下文。
+- **`hippo` 模式证据回填**：图算法选出高相关实体后，再回到向量/文档索引拿可引用 chunk。
 
 ---
 
